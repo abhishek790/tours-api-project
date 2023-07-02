@@ -16,6 +16,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    passwordChangedAt: req.body.passwordChangedAt,
   });
 
   const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
@@ -100,6 +101,14 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
   //4) check if user changed password after the jwt was issued
   //TO IMPLEMENT THIS TEST WE WILL USE INSTANCE METHOD because this code belongs ot user model and not to controller
+  // we can call instance method on user documents
+  if (freshUser.changePasswordAt(decoded.iat)) {
+    return next(
+      new AppError('User recently changed password! Please log in again', 401)
+    );
+  }
+  // grant access to protected route
+  // we put entire user data on request which might be useful
 
   next();
 });
