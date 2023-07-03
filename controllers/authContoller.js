@@ -3,6 +3,7 @@ const User = require('./../models/userModel');
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
 const { promisify } = require('util');
+const sendEmail = require('./../utils/email');
 
 const signToken = (id) => {
   return jwt.sign({ id: id }, process.env.JWT_SECRET, {
@@ -17,6 +18,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
     passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role,
   });
 
   const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
@@ -78,37 +80,95 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   //2) verification token
-  // we pass the token as 1st argument so that the algorithm can read the payload, and it also need secret as 2nd argument in order to create the test signature. and 3rd argument as  a callback function, which is  gonna run as soon as the verification has been completed.
-
-  //This veryify is async function so once it verifies token it will then call the callback function
-  // We are going to promisify this function so make it return a promise and so that we can use async await.so to do that node has built in tool
-  // so promisify(jwt.verify) this is a function that we need to call which will then return a promise. result value of the promise will be decoded data so the decoded payload from this jwt
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  //NOW MOST TUTORIAL WOULD STOP HERE.BUt why do i need the steps 3 and 4?
-  //for example, what if the user has been deleted in the meantime. So the token will still exist,but if the user is no longer existent then we actually don't want to log him in, right?Or even worse, what if the user has actually changed his password after the token has been issued? Well, that should also not work, right
-  // for example imagine that someone stole the JSON web token from a user.But then, in order to protect against that the user changes his password.And so, of course, that old token that was issued before the password change should no longer be validSo it should not be accepted to access protected routes.
-  //And so, that's the kind of stuff that we're gonna implement here in step three and step four
-
   //3) check if user still exists.
-  //this is now why we actually have the ID in the payload,because we can now use that ID and query the user using just that ID.
-  const freshUser = await User.findById(decoded.id);
-  if (!freshUser) {
+
+  const currentUser = await User.findById(decoded.id);
+  if (!currentUser) {
     return next(
       new AppError('The user belonging to this token does no longer exist', 401)
     );
   }
   //4) check if user changed password after the jwt was issued
-  //TO IMPLEMENT THIS TEST WE WILL USE INSTANCE METHOD because this code belongs ot user model and not to controller
-  // we can call instance method on user documents
-  if (freshUser.changePasswordAt(decoded.iat)) {
+
+  if (currentUser.changePasswordAt(decoded.iat)) {
     return next(
       new AppError('User recently changed password! Please log in again', 401)
     );
   }
   // grant access to protected route
-  // we put entire user data on request which might be useful
-
+  req.user = currentUser;
   next();
 });
+
+// Authorization to perform certain task
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    //roles['admin','lead-guide]
+    if (!roles.includes(req.user.role)) {
+      return next(
+        // 403 means forbidden
+        new AppError('You do not have permission to perform this action', 403)
+      );
+    }
+    next();
+  };
+};
+
+// Password reset functionality
+// there are 2 steps for implementing, the first one is that the user sends a post request to a forgot password route, only with this email address.This will then create a reset token(random token ,not a jwt) and sent that to the email address that was provided.Then in 2nd part the user then sends that token from his email along with a new password in order to update his password
+
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  //1) Get user based on posted email
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) {
+    // 404 means not found
+    return next(new AppError('There is no user with email address.', 404));
+  }
+  //2) Generate the random reset token
+  //for this we are gonna create instance method on user because this has to do with data itself
+  const resetToken = user.createPasswordResetToken();
+
+  // we just modifed it in userModel but now we need to save it
+  // we pass in options in save to avoid errors
+  await user.save({ validateBeforeSave: false });
+
+  //3) Send it to user's email
+  // user will then click on this email and will then be able to do the request from there
+  // here we are going to send the plain token not the reset one
+  const resetURL = `${req.protocol}://${req.get(
+    'host'
+  )}//ap1/v1/users/resetPassword/${resetToken}`;
+
+  const message = `Forget your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email!`;
+
+  // since we want to do more than just send error message so we use try catch block and set token and expire date to undefined (which will delete the field)
+  try {
+    await sendEmail({
+      email: user.email,
+      subject: 'Your password reset token (valid for 10 min)',
+      message,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Token sent to email!',
+    });
+  } catch (err) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    // above code will just modify the data but to save it in database use .save
+    await user.save({ validateBeforeSave: false });
+
+    return next(
+      new AppError('There was an error sending the email.Try again later!'),
+      500
+    );
+  }
+});
+
+exports.resetPassword = (req, res, next) => {
+  //
+};

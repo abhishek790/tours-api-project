@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
@@ -15,6 +16,11 @@ const userSchema = new mongoose.Schema({
     validate: [validator.isEmail, 'Please provide a valid email'],
   },
   photo: String,
+  role: {
+    type: String,
+    enum: ['user', 'guide', 'lead-guide', 'admin'],
+    default: 'user',
+  },
   password: {
     type: String,
     required: [true, 'Please provide a password'],
@@ -33,8 +39,10 @@ const userSchema = new mongoose.Schema({
     },
   },
   // creating field for the date where the password has been changed
-  // this passwordChangedAt property will change when someone change the password
   passwordChangedAt: Date,
+  passwordResetToken: String,
+  // this reset token will expire after certain time for security measures
+  passwordResetExpires: Date,
 });
 
 userSchema.pre('save', async function (next) {
@@ -53,15 +61,10 @@ userSchema.methods.correctPassword = async function (
   candidatePassword,
   userpassword
 ) {
-  // bcrypt.compare is async function. returns true if matched else returns false
   return await bcrypt.compare(candidatePassword, userpassword);
 };
 
-// inside the function we will pass jwt Time stamp which says when the token was issued
 userSchema.methods.changePasswordAt = function (JWTTimestamp) {
-  // by default we will return false from the method, which means user has not changed his password after the token was issued
-  // this keyword points to the current document
-  // if the passwordChangedAt property exists only then we want to do the comparison.But if passwordChangedAt does not exist well then that means the user has not changed the password so we can simply return false
   if (this.passwordChangedAt) {
     //2023-07-02T00:00:00.000Z 1688276530 =>converting data format into millisecond and dividing it by 1000 for second because our JWTTimestamp is in second
     const changedTimestamp = parseInt(
@@ -69,13 +72,29 @@ userSchema.methods.changePasswordAt = function (JWTTimestamp) {
       10
     );
     console.log(changedTimestamp, JWTTimestamp);
-    //not changed basically means that the day or the time at which the token was issued is less than the changed timestamp
-    // for eg:the token was issued at time 100.But then, we changed the password, let's say, at time 200.so, we changed the password after the token was issued and so therefore, this is now true.But let's say that the password was last changed at 200,but then only after that, we issued the token so let's say, at time 300.And so, 300, less than 200?No, that's false.And so, we return false, which again means not changed
 
     return JWTTimestamp < changedTimestamp;
   }
   //false means not changed
   return false;
+};
+userSchema.methods.createPasswordResetToken = function () {
+  // PasswordResetToken should be a random string and it doesn't need to as cryptographically as strong as password hash so we use built in crypto.randomBytes
+  // we need to specify number of characters and then convert it into hexadecimal string
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  // to store this we're gonna create a new field in our db schema so that we can campare it with the token that the user provides
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  // logging it as an object because this way it will then tell me the variable name along with it's value
+  console.log({ resetToken }, this.passwordResetToken);
+
+  // we want token to work for 10 minutes
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+  // return the plain text token which will be sent through email
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);
