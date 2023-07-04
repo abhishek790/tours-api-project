@@ -8,14 +8,20 @@ const sendEmail = async (options) => {
   const transporter = nodemailer.createTransport({
     //passing options
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
+    port: process.env.EMAIL_PORT * 1,
+    secureConnection: false,
     // auth property for authentication
     auth: {
       user: process.env.EMAIL_USERNAME,
       pass: process.env.EMAIL_PASSWORD,
     },
+    tls: {
+      ciphers: 'SSLv3',
+    },
+
     // we are going to use a special development service which basically fakes to send emails to real addresses.But in reality, these emails end up trapped in a development inbox, so that we can then take a look at how they look later in production and that service is called mailtrap
   });
+
   //2)Define the email options
   const mailOptions = {
     from: 'Avsek Mishra <hello@avsek.com',
@@ -23,6 +29,7 @@ const sendEmail = async (options) => {
     subject: options.subject,
     text: options.message,
   };
+
   //3)Actually send the email
   // this is async ()
   await transporter.sendMail(mailOptions);

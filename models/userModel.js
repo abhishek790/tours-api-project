@@ -56,6 +56,14 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// update the changedPasswordAt property
+userSchema.pre('save', function (next) {
+  if (!this.isModified('password') || this.isNew) return next();
+  //sometimes it happens that the token is created a bit before the changed password timestamp has actually been created And so, we just need to fix that by subtracting one second so that then will put the passwordChangedAt one second in the past, okay, which will then of course,not be 100% accurate, but that's not a problem at all because one second here doesn't make any difference at all.
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
 //INSTANCE METHOD
 userSchema.methods.correctPassword = async function (
   candidatePassword,
@@ -63,7 +71,6 @@ userSchema.methods.correctPassword = async function (
 ) {
   return await bcrypt.compare(candidatePassword, userpassword);
 };
-
 userSchema.methods.changePasswordAt = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
     //2023-07-02T00:00:00.000Z 1688276530 =>converting data format into millisecond and dividing it by 1000 for second because our JWTTimestamp is in second
@@ -79,11 +86,8 @@ userSchema.methods.changePasswordAt = function (JWTTimestamp) {
   return false;
 };
 userSchema.methods.createPasswordResetToken = function () {
-  // PasswordResetToken should be a random string and it doesn't need to as cryptographically as strong as password hash so we use built in crypto.randomBytes
-  // we need to specify number of characters and then convert it into hexadecimal string
   const resetToken = crypto.randomBytes(32).toString('hex');
 
-  // to store this we're gonna create a new field in our db schema so that we can campare it with the token that the user provides
   this.passwordResetToken = crypto
     .createHash('sha256')
     .update(resetToken)
