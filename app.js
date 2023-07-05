@@ -21,6 +21,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// implementing rate limiting in order to prevent the same IP from making too many requests to our API that will help us to prevent attacks like DOS or brute force
+// what rate limiter will do is count the requests coming from one IP and then, when there are too many requests block these requests.
+// we will implement that in a global middleware,we use npm package called rate limit
+
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 

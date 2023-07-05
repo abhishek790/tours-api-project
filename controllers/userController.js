@@ -27,7 +27,7 @@ exports.getAllUsers = catchAsync(async (req, res, next) => {
 // allow currently logged in user to manipulate user data, user can update name and email address
 exports.updateMe = catchAsync(async (req, res, next) => {
   //1) Create error if user Post password data
-  if (req.body.password || req.body.password) {
+  if (req.body.password || req.body.passwordConfirm) {
     return next(
       new AppError(
         'This route is not for password updates.Pleade use /updateMyPassword.',
@@ -35,16 +35,30 @@ exports.updateMe = catchAsync(async (req, res, next) => {
       ) // 400 for bad request
     );
   }
-  //2)Update user document
-  //filter the body so that the user can update only name and email,So not letting user update other fields using this url
+
+  //2)filter out unwanted fields names that are not allowd to be updated
   const filteredBody = filterObj(req.body, 'name', 'email');
-  const UpdatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+  //3)Update user document
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
     runValidators: true,
   });
 
   res.status(200).json({
     status: 'success',
+    data: {
+      user: updatedUser,
+    },
+  });
+});
+
+//when user deletes account ,we do not delete that document form the database, instead we set the account to inactive
+exports.deleteMe = catchAsync(async (req, res, next) => {
+  await User.findByIdAndUpdate(req.user.id, { active: false });
+  //204 means deleted
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 });
 

@@ -14,6 +14,29 @@ const signToken = (id) => {
 
 const createSendToken = (user, statusCode, res) => {
   const token = signToken(user._id);
+  // token should be stored in secure http only cookie,cookie is a small piece of text that a server can send to clients,then when the client receives a cookie it automatically store it and then automatically send it back along with all future request to the same server
+
+  // to send cookie we have to attach it to the response object
+  // specify the name of the cookie,and the data that we want to send in cookie and then we can send couple of options
+  const cookieOptions = {
+    // client will delete the cookie after expiration date
+    // when specifying dates we always need to say new date
+    // process.env.JWT_COOKIE_EXPIRES_IN it has 90 day now we need to convert it into milli second
+    expires: new Date(
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+    ),
+    // cookie will only be sent on encrypted connection only (HTTPS) by this option
+    //secure: true,
+    // this will make the cookie not accessed or modified in any way by browser it is important to prevent cross-site scripting attacks
+    // when we set httpOnly true ,the browser will receive the cookie ,store it and then send it automatically along with every request
+    httpOnly: true,
+    // now if we want test this cookie rightnow it wouldn't work because right now we are not using https. and so because of this secure: true, the cookie would not be sent to the client. so we only want to activate secure property on production
+  };
+  // only when we are production secure options will be set to true
+  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+  res.cookie('jwt', token, cookieOptions);
+  // remove the password from the output
+  user.password = undefined;
   res.status(statusCode).json({
     status: 'success',
     token,
