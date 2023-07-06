@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
+const User = require('./userModel');
 
 const tourSchema = new mongoose.Schema(
   {
@@ -83,6 +84,32 @@ const tourSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    startLocation: {
+      type: {
+        type: String,
+        default: 'Point',
+        enum: ['Point'],
+      },
+      coordinates: [Number],
+      address: String,
+      description: String,
+    },
+
+    locations: [
+      {
+        type: {
+          type: String,
+          default: 'Point',
+          enum: ['Point'],
+        },
+        coordinates: [Number],
+        address: String,
+        description: String,
+        day: Number,
+      },
+    ],
+    // tours and users will always remain
+    guides: Array,
   },
   // scheme options
   {
@@ -95,7 +122,7 @@ const tourSchema = new mongoose.Schema(
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7; // calculating duration in week
 });
-
+//documnet middleware
 tourSchema.pre('save', function (next) {
   console.log(this);
 
@@ -112,7 +139,9 @@ tourSchema.post('save', function (doc, next) {
   // console.log(doc);
   next();
 });
+// connecting tours and user by referencing
 
+//query middleware
 tourSchema.pre(/^find/, function (next) {
   this.find({ secretTour: { $ne: true } });
   this.start = Date.now();
@@ -125,6 +154,7 @@ tourSchema.post(/^find/, function (docs, next) {
   next();
 });
 
+// aggregate middleware
 tourSchema.pre('aggregate', function (next) {
   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
   // console.log(this.pipeline());
