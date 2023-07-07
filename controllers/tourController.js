@@ -31,12 +31,9 @@ exports.getAllTours = catchAsync(async (req, res, next) => {
 
 exports.getTours = catchAsync(async (req, res, next) => {
   const tours = await Tour.findById(req.params.id);
-  // here we are giving error if tours is null or falsy
 
   if (!tours) {
-    // we also put return so that this function does not go to the below next step
     return next(new AppError('No tour found with that ID', 404));
-    //QUICK SUMMARY: we create an error and then we pass that error into next and as soon as next receives something it assumes that it is an error and it will jump straight into the global error handling middleware which will then send the response for us
   }
 
   res.status(200).json({

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator');
-const User = require('./userModel');
 
 const tourSchema = new mongoose.Schema(
   {
@@ -108,8 +107,12 @@ const tourSchema = new mongoose.Schema(
         day: Number,
       },
     ],
-    // tours and users will always remain
-    guides: Array,
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   // scheme options
   {
@@ -139,12 +142,20 @@ tourSchema.post('save', function (doc, next) {
   // console.log(doc);
   next();
 });
-// connecting tours and user by referencing
 
 //query middleware
 tourSchema.pre(/^find/, function (next) {
   this.find({ secretTour: { $ne: true } });
   this.start = Date.now();
+  next();
+});
+
+//child referencing
+tourSchema.pre(/^find/, function (next) {
+  this.populate({
+    path: 'guides',
+    select: '-__v -passwordChangedAt',
+  });
   next();
 });
 
