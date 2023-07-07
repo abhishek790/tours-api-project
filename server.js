@@ -8,6 +8,7 @@ process.on('uncaughtException', (err) => {
   // so we wanna log the error to the console,and giving us a way of then fixing the problem and then we want to gracefully shutdown the server
   console.log('UNCAUGHT EXCEPTION! Shutting down...');
   console.log(err.name, err.message);
+  console.log(err.stack);
   process.exit(1);
 });
 
