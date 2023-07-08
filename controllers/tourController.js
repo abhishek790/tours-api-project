@@ -1,7 +1,8 @@
 const Tour = require('./../models/tourModel');
-const APIFeatures = require('../utils/apiFeatures');
+
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('../utils/appError');
+const factory = require('./handlerFactory');
 
 //aliasing
 exports.aliasTopTours = (req, res, next) => {
@@ -11,78 +12,13 @@ exports.aliasTopTours = (req, res, next) => {
   next();
 };
 
-exports.getAllTours = catchAsync(async (req, res, next) => {
-  const features = new APIFeatures(Tour.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .paginate();
-  //execute query
-  const tours = await features.query;
+exports.getAllTours = factory.getAll(Tour);
+exports.getTours = factory.getOne(Tour, { path: 'reviews' });
+exports.createTours = factory.createOne(Tour);
+exports.updateTours = factory.updateOne(Tour);
 
-  res.status(200).json({
-    status: 'success',
-    results: tours.length,
-    data: {
-      tours: tours,
-    },
-  });
-});
-
-exports.getTours = catchAsync(async (req, res, next) => {
-  const tours = await Tour.findById(req.params.id).populate('reviews');
-
-  if (!tours) {
-    return next(new AppError('No tour found with that ID', 404));
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tours: tours,
-    },
-  });
-});
-
-exports.createTours = catchAsync(async (req, res, next) => {
-  const newTour = await Tour.create(req.body);
-
-  res.status(201).json({
-    status: 'success',
-    data: {
-      tour: newTour,
-    },
-  });
-});
-
-exports.updateTours = catchAsync(async (req, res, next) => {
-  const tours = await Tour.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-
-    runValidators: true,
-  });
-
-  if (!tours) {
-    return next(new AppError('No tour found with that ID', 404));
-  }
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tours,
-    },
-  });
-});
-
-exports.deleteTours = catchAsync(async (req, res, next) => {
-  const tours = await Tour.findByIdAndDelete(req.params.id);
-
-  if (!tours) {
-    return next(new AppError('No tour found with that ID', 404));
-  }
-  res.status(204).json({
-    status: 'success',
-  });
-});
+// in the deleteOne function we pass the model and this function will then right away return this handler function declared in handlerFactory this works because of JavaScript closures,which is just a fancy way of saying that this inner function here will get access to the variables of the outer function even after the outer has already returned.
+exports.deleteTours = factory.deleteOne(Tour);
 
 exports.getTourStats = catchAsync(async (req, res, next) => {
   const stats = await Tour.aggregate([
