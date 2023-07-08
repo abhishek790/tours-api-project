@@ -20,6 +20,7 @@ const reviewSchema = new mongoose.Schema(
     tour: [
       {
         type: mongoose.Schema.ObjectId,
+        // so reference is to a model called tour so it's in that collection where monogoose is then going to look for documents with the ID that we specified
         ref: 'Tour',
         required: [true, 'Review must belong to a tour.'],
       },
@@ -39,11 +40,18 @@ const reviewSchema = new mongoose.Schema(
 );
 
 reviewSchema.pre(/^find/, function (next) {
-  this.populate('tour');
-  next();
-});
-reviewSchema.pre(/^find/, function (next) {
-  this.populate('user');
+  // we populate twice because we want both tour and user model to populate
+  // this.populate({
+  //   path: 'tour',
+  //   select: 'name',
+  // }).populate({
+  //   path: 'user',
+  //   select: 'name photo',
+  // });
+  this.populate({
+    path: 'user',
+    select: 'name photo',
+  });
   next();
 });
 

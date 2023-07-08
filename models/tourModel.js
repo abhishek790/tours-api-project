@@ -125,6 +125,16 @@ const tourSchema = new mongoose.Schema(
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7; // calculating duration in week
 });
+
+//virtual populate
+
+tourSchema.virtual('reviews', {
+  // name of the model we want to reference
+  ref: 'Review',
+  foreignField: 'tour',
+  localField: '_id',
+});
+
 //documnet middleware
 tourSchema.pre('save', function (next) {
   console.log(this);
