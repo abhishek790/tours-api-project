@@ -122,6 +122,17 @@ const tourSchema = new mongoose.Schema(
   }
 );
 
+// we can create indexes on specific fields in a collection for eg: mongo automatically creates index on the id by default.And this ID index is then basically an ordered list of all the IDs that get stored somewhere outside of the collection , And this index is extremely useful.Because whenever documents are queried by the ID, MongoDB will search that ordered index instead of searching through the whole collection and look at all the documents one by one which is of course much slower.
+// without an index Mongo has to look at each document one by one.But with an index on the field that we are querying for,this process becomes much more efficient.
+// we pass in object with name of the field that we want to index. 1 means sorting index ascending order and -1 means sorting index descending order
+// this is also called single field index
+//if we sometimes query for a field but combined with another field then it's actually more efficient to create a compound index(two fields)
+
+//tourSchema.index({ price: 1 });
+// compound index
+tourSchema.index({ price: 1, ratingsAverage: -1 });
+tourSchema.index({ slug: 1 });
+
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7; // calculating duration in week
 });

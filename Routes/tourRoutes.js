@@ -12,17 +12,31 @@ router
   .get(tourController.aliasTopTours, tourController.getAllTours);
 
 router.route('/tour-stats').get(tourController.getTourStats);
-router.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
+router
+  .route('/monthly-plan/:year')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide', 'guide'),
+    tourController.getMonthlyPlan
+  );
 
 router
   .route('/')
   // adding a middleware in order to allow only logged in user to get access to the getAllTours
-  .get(authController.protect, tourController.getAllTours)
-  .post(tourController.createTours);
+  .get(tourController.getAllTours)
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide'),
+    tourController.createTours
+  );
 router
   .route('/:id')
   .get(tourController.getTours)
-  .patch(tourController.updateTours)
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide'),
+    tourController.updateTours
+  )
   //AUTHORIZATION
   .delete(
     authController.protect,

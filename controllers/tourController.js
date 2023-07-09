@@ -1,5 +1,4 @@
 const Tour = require('./../models/tourModel');
-
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('../utils/appError');
 const factory = require('./handlerFactory');
@@ -16,8 +15,6 @@ exports.getAllTours = factory.getAll(Tour);
 exports.getTours = factory.getOne(Tour, { path: 'reviews' });
 exports.createTours = factory.createOne(Tour);
 exports.updateTours = factory.updateOne(Tour);
-
-// in the deleteOne function we pass the model and this function will then right away return this handler function declared in handlerFactory this works because of JavaScript closures,which is just a fancy way of saying that this inner function here will get access to the variables of the outer function even after the outer has already returned.
 exports.deleteTours = factory.deleteOne(Tour);
 
 exports.getTourStats = catchAsync(async (req, res, next) => {

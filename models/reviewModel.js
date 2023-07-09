@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const Tour = require('./tourModel');
 // review model is a child of tour and user
 const reviewSchema = new mongoose.Schema(
   {
@@ -54,6 +54,39 @@ reviewSchema.pre(/^find/, function (next) {
   });
   next();
 });
+
+// so storing a summary of related data set on the main data set is actually a very popular technique in data modeling. It can be helpful in order to prevent constant queries of the related data set
+// static method => these can be called on the model directly like Review.calcStats()
+// this function takes in a tour ID
+reviewSchema.statics.calcAverageRatings = async function (tourId) {
+  //this keyword will point to the current model, and we need to call aggregate on a model and that's why we used static method
+  const stats = await this.aggregate([
+    {
+      $match: { tour: tourId },
+    },
+    {
+      $group: {
+        _id: '$tour',
+        nRatings: { $sum: 1 },
+        avgRating: { $avg: '$rating' },
+      },
+    },
+  ]);
+  console.log(stats);
+  // find the current tour and update avgRating and nRatings on that tour. this allows us to dynamically change values in the above mentioned field
+  /*[
+    {
+      _id: [ 64aaa317d0b4e62bec430ee6 ],
+      nRatings: 3,
+      avgRating: 4.333333333333333
+    }
+  ]*/
+
+  await Tour.findByIdAndUpdate(tourId, {
+    ratingsQuantity: stats[0].nRatings,
+    ratingsAverage: stats[0].avgRating,
+  });
+};
 
 const Review = mongoose.model('Review', reviewSchema);
 

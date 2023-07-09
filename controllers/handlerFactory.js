@@ -2,10 +2,6 @@ const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
 const APIFeatures = require('../utils/apiFeatures');
 
-//factory function is a function that returns another function,and in this case our handler function So, for deleting, for creating, for updating and also for reading resources.
-
-// here we return a funciton just like this but not only for the tour but every single model that we have in our application and might have in the future
-// inside the factory function we will pass in the model all right
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
     const doc = await Model.findByIdAndDelete(req.params.id);
@@ -71,12 +67,19 @@ exports.getOne = (Model, popOptions) =>
 
 exports.getAll = (Model) =>
   catchAsync(async (req, res, next) => {
-    const features = new APIFeatures(Model.find(), req.query)
+    // to allow for nested GET reviews on tour
+    let filter = {};
+    // only the reviews that matches tourId will be sent
+    if (req.params.tourId) filter = { tour: req.params.tourId };
+
+    const features = new APIFeatures(Model.find(filter), req.query)
       .filter()
       .sort()
       .limitFields()
       .paginate();
     //execute query
+    //explain method will give statistic about query
+    //const doc = await features.query.explain();
     const doc = await features.query;
 
     res.status(200).json({
