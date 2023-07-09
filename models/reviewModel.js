@@ -93,22 +93,6 @@ reviewSchema.post('save', function () {
   // Review model is not defined ahead ,its defined after this code so to get around this we use this.constructor,and that will still point to model becaues this keyword is current document and constructor is the model who created that document
   this.constructor.calcAverageRatings(this.tour);
 });
-//2nd part video for calculating review stats, this time for when review is updated or deleted
-//a review is updated or deleted using findByIdAndUpdate and findByIdAndDelete So for these, we actually do not have document middleware but only query middleware, so in the query we actually don't have direct access to the document.
-// to get around this we are going to implement pre middleware for these hooks
-// behind the scene findbyId is just a shortcut for findOneAndUpdate with current ID
-reviewSchema.pre(/^findOneAnd/, async function (next) {
-  // to get access to current review document but this keyword is the current query, so we will execute the query then that will give us the document that is currently being processed
-  // because we are using pre , we don't get the recently updated data from db because that task has not been done yet, but we cannot use post here because the query has already executed and we don't get access to query, and without query we cannot save the review document
-  // this.r contain document , we created a property on this variable so this.r is now review
-  this.r = await this.findOne();
-  console.log(this.r);
-  next();
-});
-
-reviewSchema.post(/^findOneAnd/, async function () {
-  await this.r.constructor.calcAverageRatings(this.r.tour);
-});
 
 const Review = mongoose.model('Review', reviewSchema);
 
